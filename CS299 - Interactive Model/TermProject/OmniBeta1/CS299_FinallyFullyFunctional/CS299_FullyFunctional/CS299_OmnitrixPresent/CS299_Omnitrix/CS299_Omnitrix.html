@@ -1,0 +1,614 @@
+<!--ชิตดนัย แสงน้อย 6509681117-->
+<!--ปุณณเทพ เจริญสิทธิ์ 6509611874-->
+<!--ชญานนท์ กล่อมใจขาว 6509611619-->
+<!--ธนพล มูลชาลี 6509681125-->
+<!--VIDEO: https://youtu.be/fmXZD82MD7Q-->
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=yes"
+    />
+    <title>CS299 Example</title>
+    <style type="text/css">
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+      #c {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="c"></canvas>
+  </body>
+
+  <script type="module">
+    import * as THREE from "https://threejsfundamentals.org/threejs/resources/threejs/r132/build/three.module.js";
+    import { OrbitControls } from "https://threejsfundamentals.org/threejs/resources/threejs/r132/examples/jsm/controls/OrbitControls.js";
+    import { GLTFLoader } from "https://threejsfundamentals.org/threejs/resources/threejs/r132/examples/jsm/loaders/GLTFLoader.js";
+
+    // -------------------------------  THREE JS MAIN  ---------------------------------
+    function main() {
+      // ----------------------------- Initialization --------------------------------
+
+      //initialize variables canvas
+      const canvas = document.querySelector("#c");
+      const renderer = new THREE.WebGLRenderer({ canvas });
+
+      //initialize camera parameters
+      const fov = 45;
+      const aspect = 2; // the canvas default
+      const near = 0.1;
+      const far = 100;
+
+      //initialize camera with threejs
+      const camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
+      camera.position.set(1, 1, 1);
+
+      //initialize audio
+      var listener = new THREE.AudioListener();
+
+      //initialize camera moving
+      const controls = new OrbitControls(camera, canvas);
+      controls.target.set(0, 0, 0);
+      controls.update();
+
+      //scene (where you can place objects, lights, and cameras.)
+      const scene = new THREE.Scene();
+
+      // Load CubeTexture
+      {
+        const loader = new THREE.CubeTextureLoader();
+        const texture = loader.load([
+          "skybox/right.png",
+          "skybox/left.png",
+          "skybox/top.png",
+          "skybox/bottom.png",
+          "skybox/front.png",
+          "skybox/back.png",
+        ]);
+        scene.background = texture;
+      }
+
+      //To area for display
+      function frameArea(
+        sizeToFitOnScreen,
+        boxSize,
+        boxCenter,
+        camera,
+        radius
+      ) {
+        const halfSizeToFitOnScreen = sizeToFitOnScreen * 0.5;
+        const halfFovY = THREE.MathUtils.degToRad(camera.fov * 0.5);
+        const distance = halfSizeToFitOnScreen / Math.tan(halfFovY);
+
+        // Set the camera position to look at the object from a 90-degree angle
+        const angle = THREE.MathUtils.degToRad(radius);
+        const offsetX = Math.cos(angle) * distance;
+        const offsetY = Math.sin(angle) * distance;
+
+        camera.position.set(
+          boxCenter.x + offsetX,
+          boxCenter.y + offsetY,
+          boxCenter.z
+        );
+
+        // Set the camera to look at the object
+        const lookAtPosition = new THREE.Vector3(
+          boxCenter.x,
+          boxCenter.y,
+          boxCenter.z
+        );
+        camera.lookAt(lookAtPosition);
+
+        // Update near, far, and updateProjectionMatrix
+        camera.near = boxSize / 100;
+        camera.far = boxSize * 100;
+        camera.updateProjectionMatrix();
+      }
+      {
+        const skyColor = 0xb1e1ff; // light blue
+        const groundColor = 0xb97a20; // brownish orange
+        const intensity = 1;
+        const light = new THREE.HemisphereLight(
+          skyColor,
+          groundColor,
+          intensity
+        );
+        scene.add(light);
+      }
+
+      //สร้างและกำหนด DirectionalLight
+      {
+        const color = 0xffffff;
+        const intensity = 1;
+        //เพิ่มจุดกำเนิดแสง จาก threejs
+        const light = new THREE.DirectionalLight(color, intensity);
+        light.position.set(5, 10, 2);
+        scene.add(light);
+        scene.add(light.target);
+      }
+
+      //สร้างและกำหนดให้เล่น BGM
+      var audioPressed = true;
+      function initAudio() {
+        //initialize audio part
+        //เพิ่มการเล่นเสียงใน scene
+        var listener = new THREE.AudioListener();
+        //ให้กล้องฟังเสียงจากในฉาก
+        camera.add(listener);
+        //ประกาศเพื่อเอาไว้เก็บเสียงที่นำเข้ามา
+        var audioLoader = new THREE.AudioLoader();
+
+        //นำเสียงเข้าและปรับแต่ง
+        audioLoader.load("sound/BGM.mp3", function (buffer) {
+          var sound = new THREE.Audio(listener);
+          sound.setBuffer(buffer);
+          sound.setLoop(true);
+          sound.setVolume(0.5);
+          sound.onEnded = function () {
+            this.play();
+          };
+          //เพื่อให้เสียงเล่นหนึ่งครั้ง
+          if (audioPressed) {
+            sound.play();
+            audioPressed = false;
+          }
+        });
+      }
+
+      //สร้างฟังก์ชันสำหรับแสดงหน้าจอสีแดง(ตอนนาฬิกาหมดเวลา)
+      function makeRed() {
+        redFlash.visible = true;
+        setTimeout(() => {
+          redFlash.visible = false;
+        }, 1000);
+        if (omniTimeOut) {
+          omniTimeOut.play();
+        }
+      }
+
+      //โหลดตัวModelโดยใช้gtlf และนำModelมาลงในScene
+      {
+        //initialize the model gltf by threejs
+        const gltfLoader = new GLTFLoader();
+        gltfLoader.load("model/Omnitrix.gltf", (gltf) => {
+          const root = gltf.scene;
+          scene.add(root);
+
+          //initialize the object ด้วยตัวแปร
+          const coreObject = findObjectByName(root, "Core");
+          const buttonObject = findObjectByName(root, "Button");
+          const subBottonObject = findObjectByName(root, "Object");
+          const coverObject = findObjectByName(root, "Cover");
+          const lineObject = findObjectByName(root, "Line");
+          const iconObject = findObjectByName(root, "Icon");
+          const greeObject = findObjectByName(root, "standby");
+          const redObject = findObjectByName(root, "cooldown");
+          const whiteObject = findObjectByName(root, "using");
+
+          //สร้างสีเมื่อเกิดการทำงานต่างๆ
+          //สีเขียวเมื่อเกิดการแปลงร่าง
+          //สีแดงเมื่อหมดเวลาแปลงร่าง
+          //ใช้ three ในการสร้างสี่เหลี่ยม
+          const greenFlashGeometry = new THREE.PlaneGeometry(10, 10, 10);
+          const redFlashGeometry = new THREE.PlaneGeometry(10, 10, 10);
+          //ให้ค่าสีกับสี่เหลี่ยม
+          const greenFlashMaterial = new THREE.MeshBasicMaterial({
+            color: 0x00ff00,
+            side: THREE.DoubleSide,
+          });
+          const redFlashMaterial = new THREE.MeshBasicMaterial({
+            color: 0xff0000,
+            side: THREE.DoubleSide,
+          });
+          //สร้างสี่เหลี่ยมจาก material
+          const greenFlash = new THREE.Mesh(
+            greenFlashGeometry,
+            greenFlashMaterial
+          );
+          const redFlash = new THREE.Mesh(redFlashGeometry, redFlashMaterial);
+
+          // Initially, make it invisible
+          greenFlash.visible = false;
+          redFlash.visible = false;
+          //set position
+          greenFlash.rotation.x = Math.PI / 2;
+          redFlash.rotation.x = Math.PI / 2;
+          greenFlash.position.y += 4;
+          redFlash.position.y += 4;
+          scene.add(redFlash);
+          scene.add(greenFlash);
+
+          //การปรับเลือกตัวละคร
+          let omniChooseD;
+          let omniChooseA;
+          if (coreObject && buttonObject) {
+            // Now you can manipulate or do whatever you need with the objects
+            console.log("Found Core:", coreObject);
+            console.log("Found Button:", buttonObject);
+            console.log("Found subBotton:", subBottonObject);
+
+            //initialize
+            // Create a raycaster for handling mouse interactions
+            const raycaster = new THREE.Raycaster();
+
+            // Create a 2D vector to represent mouse coordinates
+            const mouse = new THREE.Vector2();
+
+            // Create an AudioLoader to load audio files
+            const audioLoader = new THREE.AudioLoader();
+
+            // Load the "omniChooseD.mp3" audio file
+            audioLoader.load("sound/omniChooseD.mp3", function (buffer) {
+              // Create an Audio object for "omniChooseD" and set its buffer
+              omniChooseD = new THREE.Audio(listener);
+              omniChooseD.setBuffer(buffer);
+            });
+
+            // Load the "omniChooseA.mp3" audio file
+            audioLoader.load("sound/omniChooseA.mp3", function (buffer) {
+              // Create an Audio object for "omniChooseA" and set its buffer
+              omniChooseA = new THREE.Audio(listener);
+              omniChooseA.setBuffer(buffer);
+            });
+
+            function swapUpDown(object, remainingSwaps) {
+              if (remainingSwaps <= 0) {
+                redFlash.visible = true;
+                setTimeout(() => {
+                  redFlash.visible = false;
+                }, 1500);
+                return;
+              }
+
+              // Move the object up
+              setTimeout(() => {
+                status(0);
+
+                // Call the function recursively for the next swap
+                swapUpDown(object, remainingSwaps - 1);
+              }, 1000);
+
+              // Move the object down after a delay
+              setTimeout(() => {
+                status(1);
+              }, 1000 * (remainingSwaps - 1)); // Adjust the delay for moving down
+            }
+
+            //ประกาศค่าสำหรับเพื่อการหมุนนาฬิกาเลือกตัว
+            const iniCov = coverObject.rotation.z;
+            const iniIcon = iconObject.rotation.x;
+            var timeOut = false;
+            var stat = 10;
+
+            //status สำหรับการเปลี่ยนสีหน้าจอ
+            //เมื่อกดฟังกืชั่นใดจะมีการเปลี่ยนค่าสเตตัสตามต้องการ
+            function status(num) {
+              switch (num) {
+                case 0:
+                  greeObject.visible = false;
+                  redObject.visible = true;
+                  whiteObject.visible = false;
+                  stat = 0;
+                  break;
+                case 1:
+                  greeObject.visible = false;
+                  redObject.visible = false;
+                  whiteObject.visible = true;
+                  stat = 1;
+                  break;
+                default:
+                  greeObject.visible = true;
+                  redObject.visible = false;
+                  whiteObject.visible = false;
+                  coverObject.rotation.z = iniCov;
+                  iconObject.rotation.x = iniIcon;
+                  count = 1;
+                  stat = 10;
+              }
+            }
+
+            //สำหรับการหมุนหน้าปัดตัวละคร(ที่เป็น core และมีหน้าตัวละคร)
+            //โดยนับจากการหมุน ทุกๆการหมุถนจะเพิ่มค่าไปเรื่อยๆ
+            let count = 1;
+            function selection(num) {
+              switch (num) {
+                case 1:
+                  iconObject.rotation.x = 4.0;
+                  break;
+                case 2:
+                  iconObject.rotation.x = 3.48;
+                  break;
+                case 3:
+                  iconObject.rotation.x = 2.93;
+                  break;
+                case 4:
+                  iconObject.rotation.x = 2.16;
+                  break;
+                case 5:
+                  iconObject.rotation.x = 1.61;
+                  break;
+                case 6:
+                  iconObject.rotation.x = 0.978;
+                  break;
+                case 7:
+                  iconObject.rotation.x = 0.428;
+                  break;
+                case 8:
+                  iconObject.rotation.x = 6;
+                  break;
+                case 9:
+                  iconObject.rotation.x = 5.452;
+                  break;
+                default:
+                  iconObject.rotation.x = 4.72;
+              }
+            }
+
+            //ฟังก์ชั่นการ interaction ต่างๆ
+            var Dkey = false;
+            window.addEventListener("keydown", (event) => {
+              //เพื่อการหมุนกล้องไปส่วนบนหน้าปัด
+              if (event.key === " ") {
+                console.log("The space key was pressed!");
+                frameArea(boxSize, boxSize, boxCenter, camera, -270);
+              }
+
+              //เมื่อ core การเลือกเด้งขึ้นมา เมื่อมีแอคชั่นต่างๆดังนี้จะทำการเปลี่ยนตัวละคร
+              //การเปลี่ยนตัวละครจะเป็นการหมุน bject core ไปตามค่าที่กำหนดไว้
+              if (animateLocateCore) {
+                //หมุนซ้าย
+                if (event.key === "a") {
+                  console.log("The A key was pressed!");
+                  if (!Dkey) {
+                    count++;
+                  }
+                  Dkey = true;
+                  coverObject.rotation.z += 45;
+                  if (count == 10) {
+                    count = 0;
+                  }
+                  selection(count++);
+                  //เสียงของการเปลี่ยนตัว
+                  if (omniChooseA) {
+                    omniChooseA.play();
+                  }
+                } else if (event.key === "d") {
+                  //หมุนขวา
+                  console.log("The D key was pressed!");
+                  if (Dkey) {
+                    count--;
+                  }
+                  Dkey = false;
+                  coverObject.rotation.z -= 45;
+                  if (count == 0) {
+                    count = 9;
+                  }
+                  selection(count--);
+                  //เสียงของการเปลี่ยนตัว
+                  if (omniChooseD) {
+                    omniChooseD.play();
+                  }
+                }
+                //เมื่อเลือกตัวไปแล้ว จะมีการให้กด x เพื่อรีเซท
+              } else if (!animateLocateCore) {
+                if (event.key === "x" && stat == 1) {
+                  console.log("The X key was pressed!");
+                  if (omniWarn) {
+                    omniWarn.play();
+                  }
+                  //เปลี่ยนสีหน้าปัด และสเตตัส
+                  swapUpDown(redObject, 3);
+                  status(0);
+                  makeRed();
+                  if (omniTimeOut) {
+                    omniTimeOut.play();
+                  }
+                  //เพื่อรีสถานะของหน้าปัด
+                } else if (event.key === "r" && stat == 0) {
+                  console.log("The R key was pressed!");
+                  status(10);
+
+                  if (omniRe) {
+                    omniRe.play();
+                  }
+                }
+              }
+            });
+
+            //เพื่อกำหนดค่า boolean ต่างเมื่อมีการกระทำนึงแล้วจะไม่ย้อนสถานะกลับไปก่อนหน้า
+            let animateLocateCore = false;
+            let omniPushSound;
+            let omniSelect;
+            let omniTrans;
+            let omniWarn;
+            let omniTimeOut;
+            let omniRe;
+
+            //นำเข้าเสียงต่างๆ
+            audioLoader.load("sound/omniPush.mp3", function (buffer) {
+              omniPushSound = new THREE.Audio(listener);
+              omniPushSound.setBuffer(buffer);
+            });
+
+            audioLoader.load("sound/omniRecharged.mp3", function (buffer) {
+              omniRe = new THREE.Audio(listener);
+              omniRe.setBuffer(buffer);
+            });
+
+            audioLoader.load("sound/omniWarn.mp3", function (buffer) {
+              omniWarn = new THREE.Audio(listener);
+              omniWarn.setBuffer(buffer);
+            });
+
+            audioLoader.load("sound/omniTimeOut.mp3", function (buffer) {
+              omniTimeOut = new THREE.Audio(listener);
+              omniTimeOut.setBuffer(buffer);
+            });
+
+            audioLoader.load("sound/omniTransform.mp3", function (buffer) {
+              omniTrans = new THREE.Audio(listener);
+              omniTrans.setBuffer(buffer);
+            });
+
+            audioLoader.load("sound/omniSelect.mp3", function (buffer) {
+              omniSelect = new THREE.Audio(listener);
+              omniSelect.setBuffer(buffer);
+            });
+            window.addEventListener("click", (event) => {
+              // Calculate normalized mouse coordinates
+              mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+              mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+              // Set up raycaster
+              raycaster.setFromCamera(mouse, camera);
+
+              // Check for intersections
+              const intersects1 = raycaster.intersectObjects(
+                [subBottonObject],
+                true
+              );
+              const intersects2 = raycaster.intersectObjects(
+                [coreObject],
+                true
+              );
+              //เมื่อกีการกดปุ่ม แล้วจะมีหน้าให้เลือกตัวละคร
+              //ในอนิเมชั่นจะเปลี่ยนความสูงของหน้าปัดเพื่อเป็นการเด้งขึ้นของหน้าปัด
+              if (intersects1.length > 0) {
+                if (animateLocateCore == false && stat == 10) {
+                  subBottonObject.position.x += 0.05;
+                  buttonObject.position.x += 0.05;
+                  coreObject.position.z -= 0.3;
+                  animateLocateCore = true;
+                  //เสียงเด้งปน้าปัด
+                  if (omniPushSound) {
+                    omniPushSound.play();
+                  }
+                  //เมื่อเปลี่ยนตัวละคร
+                  if (omniSelect) {
+                    omniSelect.play();
+                    omniSelect.setLoop(true);
+                  }
+                  stat = 5;
+                }
+                console.log("Button pressed!");
+              }
+              //เมื่อมีการกดหน้าปัดจะเป็นการเลือกตัวนั้น และแสดงแสงสีเขียวโดยการเปลี่ยนค่า status
+              if (intersects2.length > 0) {
+                if (animateLocateCore == true && stat == 5) {
+                  //ทำให้ไม่เกิดการหมุนหน้าปัด
+                  if (omniSelect) {
+                    omniSelect.setLoop(false);
+                  }
+                  //เสียงการแปลงร่าง
+                  if (omniTrans) {
+                    omniTrans.play();
+                  }
+
+                  subBottonObject.position.x -= 0.05;
+                  buttonObject.position.x -= 0.05;
+                  coreObject.position.z += 0.3;
+                  status(1);
+                  animateLocateCore = false;
+                  //เกิดแสงสีเขียว และหายไปในเวลา 1 วินาที
+                  greenFlash.visible = true;
+                  setTimeout(() => {
+                    greenFlash.visible = false;
+                  }, 1000);
+                }
+
+                console.log("Core pressed!");
+              }
+            });
+          } else {
+            //หากไม่เจอ object ที่เรียก จะเด้งเตือนขึ้น
+            console.error("Objects not found");
+          }
+          canvas.addEventListener("click", initAudio);
+
+          // compute the box that contains all the stuff
+          // from root and below
+          const box = new THREE.Box3().setFromObject(root);
+          const boxSize = box.getSize(new THREE.Vector3()).length();
+          const boxCenter = box.getCenter(new THREE.Vector3());
+
+          // set the camera to frame the box
+          frameArea(boxSize, boxSize, boxCenter, camera, 135);
+
+          // update the Trackball controls to handle the new size
+          controls.maxDistance = boxSize * 10;
+          controls.target.copy(boxCenter);
+          controls.update();
+        });
+      }
+
+      //เพิ่่อเรียก object ที่เราหา
+      //return true = เจอ
+      //return false = ไม่เจอ
+      function findObjectByName(parent, name) {
+        // ถ้ามีชื่ออยู่ใน parent ไหน ให้ return เป็น parentไปเลย
+        if (parent.name === name) {
+          return parent;
+        }
+
+        for (const child of parent.children) {
+          const result = findObjectByName(child, name);
+          //ถ้าเจอให้ return ที่เจอเลย
+          if (result) {
+            return result;
+          }
+        }
+
+        return null;
+      }
+
+      function resizeRendererToDisplaySize(renderer) {
+        // ดึงอินสแตนซ์ของ canvas จาก renderer
+        const canvas = renderer.domElement;
+
+        // ดึงความกว้างและความสูงปัจจุบันของ canvas
+        const width = canvas.clientWidth;
+        const height = canvas.clientHeight;
+
+        // ตรวจสอบว่าต้องการการปรับขนาดโดยเปรียบเทียบกับขนาดปัจจุบันของ canvas
+        const needResize = canvas.width !== width || canvas.height !== height;
+
+        // หากต้องการการปรับขนาด, กำหนดขนาดของ renderer เพื่อให้ตรงกับขนาดของ canvas
+        if (needResize) {
+          renderer.setSize(width, height, false);
+        }
+
+        // คืนค่า boolean เพื่อระบุว่ามีการปรับขนาดหรือไม่
+        return needResize;
+      }
+
+      function render(time) {
+        time *= 0.001; // convert to seconds
+        
+        // Check and perform resizing if needed
+        if (resizeRendererToDisplaySize(renderer)) {
+          const canvas = renderer.domElement;
+          camera.aspect = canvas.clientWidth / canvas.clientHeight;
+          camera.updateProjectionMatrix();
+        }
+        // Render the scene with the camera
+        renderer.render(scene, camera);
+        
+        // Request the next animation frame to continue rendering
+        requestAnimationFrame(render);
+      }
+      // Initial call to start the rendering loop
+      requestAnimationFrame(render);
+    }
+
+    main();
+  </script>
+</html>

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+        <title>CS299 Term Project</title>
+    </head>
+    <body>
+        <canvas id="c"></canvas>
+        <div id="loading">
+            <div>
+              <div>...loading...</div>
+              <div class="progress"><div id="progressbar"></div></div>
+            </div>
+          </div>
+    </body>
+
+    <script type="module">
+        import * as THREE from 'https://threejsfundamentals.org/threejs/resources/threejs/r132/build/three.module.js';
+        import {OrbitControls} from 'https://threejsfundamentals.org/threejs/resources/threejs/r132/examples/jsm/controls/OrbitControls.js';
+        import {GLTFLoader} from 'https://threejsfundamentals.org/threejs/resources/threejs/r132/examples/jsm/loaders/GLTFLoader.js';
+        import * as SkeletonUtils from 'https://threejsfundamentals.org/threejs/resources/threejs/r132/examples/jsm/utils/SkeletonUtils.js';
+
+        function main(){
+            const canvas = document.querySelector('#c');
+            const renderer = new THREE.WebGLRenderer({canvas})
+
+            const fov = 45;
+            const aspect = 2;
+            const near = 0.1;
+            const far = 100;
+            const camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
+            camera.position.set(0,5,10);
+
+            const controls = new THREE.Scene();
+            controls.target.set(0, 2.5, 0);
+            controls.update();
+
+            const scene = new THREE.Scene();
+            scene.background = new THREE.Color
+        }
+
+    </script>
+</html>
